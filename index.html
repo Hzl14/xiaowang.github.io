@@ -1,0 +1,999 @@
+<!-- <!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高清美景背景与圆角矩形弹窗</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            position: relative;
+            height: 100vh;
+        }
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            z-index: -1;
+        }
+        .window {
+            position: absolute;
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            width: 160px;
+            height: 80px;
+            cursor: move;
+            overflow: hidden;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+        .window:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .window-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+        }
+        .window-title {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #333;
+        }
+        .window-close {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            background-color: #ff6b6b;
+            color: white;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+        .window-close:hover {
+            background-color: #ff5252;
+        }
+        .window-content {
+            flex: 1;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #555;
+        }
+        .add-window {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #ff69b4;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.4);
+            font-size: 24px;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+        .add-window:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(255, 105, 180, 0.6);
+        }
+        .customize-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+            width: 300px;
+            border: 1px solid #ddd;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        .form-group textarea {
+            height: 80px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .modal-buttons button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-confirm {
+            background: #ff69b4;
+            color: white;
+        }
+        .btn-cancel {
+            background: #ccc;
+            color: #333;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="background" id="background"></div>
+
+    <div class="add-window" id="addWindow">+</div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="customize-modal" id="customizeModal" style="display: none;">
+        <div class="modal-title">自定义小窗口</div>
+        <div class="form-group">
+            <label for="windowTitle">标题（可选）</label>
+            <input type="text" id="windowTitle" placeholder="输入标题">
+        </div>
+        <div class="form-group">
+            <label for="windowContent">内容</label>
+            <textarea id="windowContent" placeholder="输入要显示的内容" required></textarea>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-cancel" id="cancelBtn">取消</button>
+            <button class="btn-confirm" id="confirmBtn">确认添加</button>
+        </div>
+    </div>
+
+    <script>
+        let windows = [];
+        let currentDraggingWindow = null;
+        let offsetX, offsetY;
+
+        // 高清美景图数组（使用Unsplash Source的高质量图片）
+        const highDefinitionImages = [
+            'https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1433086966358-54859d0ed716?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1501785888041-af3ef285b470?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1418065460487-3e41a0c92f6d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1426604966848-d7adac402bff?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1432134584233-633a3a160a0f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1418479631204-4b5a3ca5e1ee?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1427445107805-8f1f0b5e4e6b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80'
+        ];
+
+        // 设置随机背景图
+        function setRandomBackground() {
+            const randomIndex = Math.floor(Math.random() * highDefinitionImages.length);
+            const backgroundEl = document.getElementById('background');
+            backgroundEl.style.backgroundImage = `url('${highDefinitionImages[randomIndex]}')`;
+        }
+
+        // 随机位置生成
+        function getRandomPosition() {
+            const windowWidth = 160;
+            const windowHeight = 80;
+            const maxX = window.innerWidth - windowWidth;
+            const maxY = window.innerHeight - windowHeight;
+            
+            return {
+                left: Math.random() * maxX,
+                top: Math.random() * maxY
+            };
+        }
+
+        // 带专属文案的内容库
+        const randomContents = [
+            "亲爱的小汪~ 记得多喝水",
+            "亲爱的小汪~ 休息一下吧",
+            "亲爱的小汪~ 今天也要加油",
+            "亲爱的小汪~ 保持微笑😊",
+            "亲爱的小汪~ 风景真好呀",
+            "亲爱的小汪~ 深呼吸放松",
+            "亲爱的小汪~ 快完成啦",
+            "亲爱的小汪~ 奖励颗糖🍬",
+            "亲爱的小汪~ 看看天空",
+            "亲爱的小汪~ 你超棒的"
+        ];
+        const randomTitles = [
+            "给小汪",
+            "专属提示",
+            "爱心留言",
+            "小汪专属"
+        ];
+
+        // DOM元素获取
+        const addWindowBtn = document.getElementById('addWindow');
+        const customizeModal = document.getElementById('customizeModal');
+        const overlay = document.getElementById('overlay');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const windowTitleInput = document.getElementById('windowTitle');
+        const windowContentInput = document.getElementById('windowContent');
+
+        // ✅ 新增：创建固定弹窗（不自动消失）
+        function createFixedWindow(title, content, position) {
+            const windowEl = document.createElement('div');
+            windowEl.className = 'window';
+            windowEl.style.left = `${position.left}px`;
+            windowEl.style.top = `${position.top}px`;
+            windowEl.style.background = '#e0f7fa'; // 浅蓝背景，便于区分
+
+            windowEl.innerHTML = `
+                <div class="window-header">
+                    <div class="window-title">${title}</div>
+                    <div class="window-close">×</div>
+                </div>
+                <div class="window-content">${content}</div>
+            `;
+
+            document.body.appendChild(windowEl);
+
+            // 关闭功能（但不自动消失）
+            windowEl.querySelector('.window-close').addEventListener('click', function() {
+                windowEl.style.transition = 'all 0.3s ease';
+                windowEl.style.transform = 'scale(0)';
+                windowEl.style.opacity = '0';
+                setTimeout(() => {
+                    if (document.body.contains(windowEl)) {
+                        windowEl.remove();
+                    }
+                }, 300);
+            });
+
+            // 允许拖拽
+            windowEl.querySelector('.window-header').addEventListener('mousedown', function(e) {
+                currentDraggingWindow = windowEl;
+                offsetX = e.clientX - windowEl.offsetLeft;
+                offsetY = e.clientY - windowEl.offsetTop;
+                e.preventDefault();
+            });
+        }
+
+        // ✅ 新增：获取武汉天气
+        async function fetchWuhanWeather() {
+            try {
+                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=30.5928&longitude=114.3055&current_weather=true&timezone=Asia/Shanghai');
+                const data = await res.json();
+                if (data.current_weather) {
+                    const temp = data.current_weather.temperature.toFixed(1);
+                    // 简单天气代码映射（可扩展）
+                    const weatherMap = {
+                        0: '晴',
+                        1: '多云',
+                        2: '部分多云',
+                        3: '阴',
+                        45: '雾',
+                        48: '冻雾',
+                        51: '小雨',
+                        53: '中雨',
+                        55: '大雨',
+                        61: '小雨',
+                        63: '中雨',
+                        65: '大雨',
+                        71: '小雪',
+                        73: '中雪',
+                        75: '大雪'
+                    };
+                    const desc = weatherMap[data.current_weather.weathercode] || '未知';
+                    return `武汉：${temp}°C，${desc}`;
+                } else {
+                    return "武汉天气：获取失败";
+                }
+            } catch (e) {
+                console.error("天气API错误:", e);
+                return "武汉天气：网络错误";
+            }
+        }
+
+        // 页面加载完成后设置背景并开始生成弹窗
+        window.onload = async function() {
+            setRandomBackground();
+
+            // ✅ 添加固定日期弹窗（左上角）
+            const today = new Date().toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+            createFixedWindow("📅 今日日期", `今天是 ${today}`, { left: 20, top: 20 });
+
+            // ✅ 添加固定武汉天气弹窗（左上角下方）
+            const weatherInfo = await fetchWuhanWeather();
+            createFixedWindow("🌦️ 武汉天气", weatherInfo, { left: 20, top: 120 });
+
+            // 初始化5个示例弹窗（原有逻辑不变）
+            for(let i=0; i<5; i++){
+                setTimeout(() => {
+                    const pos = getRandomPosition();
+                    createWindow(randomTitles[0], randomContents[i % randomContents.length], pos);
+                }, i * 200);
+            }
+
+            // 启动快速自动生成（原有逻辑不变）
+            startFastAutoWindows();
+        };
+
+        // 手动添加弹窗按钮（原有逻辑不变）
+        addWindowBtn.addEventListener('click', () => {
+            customizeModal.style.display = 'block';
+            overlay.style.display = 'block';
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            customizeModal.style.display = 'none';
+            overlay.style.display = 'none';
+            windowTitleInput.value = '';
+            windowContentInput.value = '';
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            const title = windowTitleInput.value.trim() || randomTitles[Math.floor(Math.random()*randomTitles.length)];
+            const content = `亲爱的小汪~ ${windowContentInput.value.trim()}`;
+            if (!windowContentInput.value.trim()) return;
+            const pos = getRandomPosition();
+            createWindow(title, content, pos);
+            customizeModal.style.display = 'none';
+            overlay.style.display = 'none';
+            windowTitleInput.value = '';
+            windowContentInput.value = '';
+        });
+
+        // 创建弹窗核心函数（原有逻辑不变）
+        function createWindow(title, content, position) {
+            const windowEl = document.createElement('div');
+            windowEl.className = 'window';
+            
+            const pos = position || getRandomPosition();
+            windowEl.style.left = `${pos.left}px`;
+            windowEl.style.top = `${pos.top}px`;
+            
+            const hue = Math.floor(Math.random() * 360);
+            windowEl.style.background = `hsl(${hue}, 70%, 95%)`;
+
+            windowEl.innerHTML = `
+                <div class="window-header">
+                    <div class="window-title">${title}</div>
+                    <div class="window-close">×</div>
+                </div>
+                <div class="window-content">${content}</div>
+            `;
+
+            document.body.appendChild(windowEl);
+            windows.push(windowEl);
+
+            windowEl.querySelector('.window-close').addEventListener('click', function() {
+                windowEl.style.transition = 'all 0.3s ease';
+                windowEl.style.transform = 'scale(0)';
+                windowEl.style.opacity = '0';
+                setTimeout(() => {
+                    if (document.body.contains(windowEl)) {
+                        windowEl.remove();
+                        const index = windows.indexOf(windowEl);
+                        if (index > -1) windows.splice(index, 1);
+                    }
+                }, 300);
+            });
+
+            windowEl.querySelector('.window-header').addEventListener('mousedown', function(e) {
+                currentDraggingWindow = windowEl;
+                offsetX = e.clientX - windowEl.offsetLeft;
+                offsetY = e.clientY - windowEl.offsetTop;
+                e.preventDefault();
+            });
+
+            // ⚠️ 自动消失（仅对普通弹窗生效，固定弹窗不受影响）
+            const disappearTime = Math.random() * 1000 + 1000;
+            setTimeout(() => {
+                if (document.body.contains(windowEl)) {
+                    windowEl.style.transition = 'all 0.5s ease';
+                    windowEl.style.transform = 'scale(0.8)';
+                    windowEl.style.opacity = '0';
+                    setTimeout(() => {
+                        if (document.body.contains(windowEl)) {
+                            windowEl.remove();
+                            const index = windows.indexOf(windowEl);
+                            if (index > -1) windows.splice(index, 1);
+                        }
+                    }, 500);
+                }
+            }, disappearTime);
+        }
+
+        // 拖拽事件（原有逻辑不变）
+        document.addEventListener('mousemove', function(e) {
+            if (currentDraggingWindow) {
+                const maxX = window.innerWidth - currentDraggingWindow.offsetWidth;
+                const maxY = window.innerHeight - currentDraggingWindow.offsetHeight;
+                
+                let newLeft = e.clientX - offsetX;
+                let newTop = e.clientY - offsetY;
+                
+                newLeft = Math.max(0, Math.min(newLeft, maxX));
+                newTop = Math.max(0, Math.min(newTop, maxY));
+                
+                currentDraggingWindow.style.left = `${newLeft}px`;
+                currentDraggingWindow.style.top = `${newTop}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            currentDraggingWindow = null;
+        });
+
+        // 快速自动生成弹窗（原有逻辑不变）
+        function startFastAutoWindows() {
+            function generateBatch() {
+                const count = Math.floor(Math.random() * 3) + 3;
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        const randomTitle = randomTitles[Math.floor(Math.random() * randomTitles.length)];
+                        const randomContent = randomContents[Math.floor(Math.random() * randomContents.length)];
+                        createWindow(randomTitle, randomContent);
+                    }, i * 100);
+                }
+                const nextDelay = Math.random() * 700 + 800;
+                setTimeout(generateBatch, nextDelay);
+            }
+            generateBatch();
+        }
+    </script>
+</body>
+</html>
+
+ -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高清美景背景与圆角矩形弹窗</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            position: relative;
+            height: 100vh;
+        }
+        .background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            z-index: -1;
+        }
+        .window {
+            position: absolute;
+            border-radius: 10px;
+            background: #ffffff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            width: 160px;
+            height: 80px;
+            cursor: move;
+            overflow: hidden;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+        .window:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .window-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #eee;
+            font-size: 12px;
+        }
+        .window-title {
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #333;
+        }
+        .window-close {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            background-color: #ff6b6b;
+            color: white;
+            font-size: 10px;
+            transition: all 0.2s ease;
+        }
+        .window-close:hover {
+            background-color: #ff5252;
+        }
+        .window-content {
+            flex: 1;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #555;
+        }
+        .add-window {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #ff69b4;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.4);
+            font-size: 24px;
+            z-index: 100;
+            transition: all 0.3s ease;
+        }
+        .add-window:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(255, 105, 180, 0.6);
+        }
+        .customize-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            z-index: 9999;
+            width: 300px;
+            border: 1px solid #ddd;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        .form-group input, .form-group textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+        .form-group textarea {
+            height: 80px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .modal-buttons button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-confirm {
+            background: #ff69b4;
+            color: white;
+        }
+        .btn-cancel {
+            background: #ccc;
+            color: #333;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 9998;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="background" id="background"></div>
+
+    <div class="add-window" id="addWindow">+</div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="customize-modal" id="customizeModal" style="display: none;">
+        <div class="modal-title">自定义小窗口</div>
+        <div class="form-group">
+            <label for="windowTitle">标题（可选）</label>
+            <input type="text" id="windowTitle" placeholder="输入标题">
+        </div>
+        <div class="form-group">
+            <label for="windowContent">内容</label>
+            <textarea id="windowContent" placeholder="输入要显示的内容" required></textarea>
+        </div>
+        <div class="modal-buttons">
+            <button class="btn-cancel" id="cancelBtn">取消</button>
+            <button class="btn-confirm" id="confirmBtn">确认添加</button>
+        </div>
+    </div>
+
+    <script>
+        let windows = [];
+        let currentDraggingWindow = null;
+        let offsetX, offsetY;
+
+        // 高清美景图数组
+        const highDefinitionImages = [
+            'https://images.unsplash.com/photo-1506744038136-46273834b3fb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1469474968028-56623f02e42e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1433086966358-54859d0ed716?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1501785888041-af3ef285b470?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1418065460487-3e41a0c92f6d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1426604966848-d7adac402bff?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1432134584233-633a3a160a0f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1418479631204-4b5a3ca5e1ee?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1470240731273-7821a6eeb6bd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1427445107805-8f1f0b5e4e6b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80',
+            'https://images.unsplash.com/photo-1476820865390-c52aeebb9891?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80'
+        ];
+
+        // 设置随机背景图
+        function setRandomBackground() {
+            const randomIndex = Math.floor(Math.random() * highDefinitionImages.length);
+            const backgroundEl = document.getElementById('background');
+            backgroundEl.style.backgroundImage = `url('${highDefinitionImages[randomIndex]}')`;
+        }
+
+        // 随机位置生成（确保不超出视口）
+        function getRandomPosition() {
+            const windowWidth = 160;
+            const windowHeight = 80;
+            const maxX = window.innerWidth - windowWidth;
+            const maxY = window.innerHeight - windowHeight;
+            return {
+                left: Math.max(0, Math.random() * maxX),
+                top: Math.max(0, Math.random() * maxY)
+            };
+        }
+
+        // 专属文案库
+        const randomContents = [
+            "亲爱的小汪~ 记得多喝水",
+            "亲爱的小汪~ 休息一下吧",
+            "亲爱的小汪~ 今天也要加油",
+            "亲爱的小汪~ 保持微笑😊",
+            "亲爱的小汪~ 风景真好呀",
+            "亲爱的小汪~ 深呼吸放松",
+            "亲爱的小汪~ 加油加油！",
+            "亲爱的小汪~ 奖励颗糖🍬",
+            "亲爱的小汪~ 看看天空",
+            "亲爱的小汪~ 你超棒的",
+            "亲爱的小汪~ 今天天气真好呀",
+            "亲爱的小汪~ 顺顺利利！"
+        ];
+        const randomTitles = [
+            "给小汪",
+            "专属提示",
+            "爱心留言",
+            "小汪专属"
+        ];
+
+        // DOM元素获取
+        const addWindowBtn = document.getElementById('addWindow');
+        const customizeModal = document.getElementById('customizeModal');
+        const overlay = document.getElementById('overlay');
+        const confirmBtn = document.getElementById('confirmBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const windowTitleInput = document.getElementById('windowTitle');
+        const windowContentInput = document.getElementById('windowContent');
+
+        // 创建固定弹窗（不自动消失）
+        function createFixedWindow(title, content, position) {
+            const windowEl = document.createElement('div');
+            windowEl.className = 'window';
+            windowEl.style.left = `${position.left}px`;
+            windowEl.style.top = `${position.top}px`;
+            windowEl.style.background = '#e0f7fa';
+            windowEl.style.zIndex = '20'; // 置于普通弹窗之上
+
+            windowEl.innerHTML = `
+                <div class="window-header">
+                    <div class="window-title">${title}</div>
+                    <div class="window-close">×</div>
+                </div>
+                <div class="window-content">${content}</div>
+            `;
+
+            document.body.appendChild(windowEl);
+
+            // 关闭功能
+            windowEl.querySelector('.window-close').addEventListener('click', function() {
+                windowEl.style.transition = 'all 0.3s ease';
+                windowEl.style.transform = 'scale(0)';
+                windowEl.style.opacity = '0';
+                setTimeout(() => {
+                    if (document.body.contains(windowEl)) {
+                        windowEl.remove();
+                    }
+                }, 300);
+            });
+
+            // 拖拽支持
+            windowEl.querySelector('.window-header').addEventListener('mousedown', function(e) {
+                currentDraggingWindow = windowEl;
+                offsetX = e.clientX - windowEl.offsetLeft;
+                offsetY = e.clientY - windowEl.offsetTop;
+                e.preventDefault();
+            });
+        }
+
+        // 获取武汉天气
+        async function fetchWuhanWeather() {
+            try {
+                const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=30.5928&longitude=114.3055&current_weather=true&timezone=Asia/Shanghai');
+                const data = await res.json();
+                if (data.current_weather) {
+                    const temp = data.current_weather.temperature.toFixed(1);
+                    const weatherMap = {
+                        0: '晴', 1: '多云', 2: '部分多云', 3: '阴',
+                        45: '雾', 48: '冻雾',
+                        51: '小雨', 53: '中雨', 55: '大雨',
+                        61: '小雨', 63: '中雨', 65: '大雨',
+                        71: '小雪', 73: '中雪', 75: '大雪'
+                    };
+                    const desc = weatherMap[data.current_weather.weathercode] || '未知';
+                    return `武汉：${temp}°C，${desc}`;
+                } else {
+                    return "武汉天气：获取失败";
+                }
+            } catch (e) {
+                console.error("天气API错误:", e);
+                return "武汉天气：网络错误";
+            }
+        }
+
+        // 页面加载完成后设置背景并创建弹窗
+        window.onload = async function() {
+            setRandomBackground();
+
+            // ✅ 随机位置创建“今日日期”弹窗
+            const today = new Date().toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+            const datePos = getRandomPosition();
+            createFixedWindow("📅 今日日期", `今天是 ${today}`, datePos);
+
+            // ✅ 随机位置创建“武汉天气”弹窗
+            const weatherInfo = await fetchWuhanWeather();
+            const weatherPos = getRandomPosition();
+            createFixedWindow("🌦️ 武汉天气", weatherInfo, weatherPos);
+
+            // 初始化5个示例弹窗
+            for(let i = 0; i < 5; i++){
+                setTimeout(() => {
+                    const pos = getRandomPosition();
+                    createWindow(randomTitles[0], randomContents[i % randomContents.length], pos);
+                }, i * 200);
+            }
+
+            // 启动快速自动生成弹窗
+            startFastAutoWindows();
+        };
+
+        // 手动添加弹窗按钮
+        addWindowBtn.addEventListener('click', () => {
+            customizeModal.style.display = 'block';
+            overlay.style.display = 'block';
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            customizeModal.style.display = 'none';
+            overlay.style.display = 'none';
+            windowTitleInput.value = '';
+            windowContentInput.value = '';
+        });
+
+        confirmBtn.addEventListener('click', () => {
+            const title = windowTitleInput.value.trim() || randomTitles[Math.floor(Math.random()*randomTitles.length)];
+            const content = `亲爱的小汪~ ${windowContentInput.value.trim()}`;
+            if (!windowContentInput.value.trim()) return;
+            const pos = getRandomPosition();
+            createWindow(title, content, pos);
+            customizeModal.style.display = 'none';
+            overlay.style.display = 'none';
+            windowTitleInput.value = '';
+            windowContentInput.value = '';
+        });
+
+        // 创建普通弹窗（会自动消失）
+        function createWindow(title, content, position) {
+            const windowEl = document.createElement('div');
+            windowEl.className = 'window';
+            const pos = position || getRandomPosition();
+            windowEl.style.left = `${pos.left}px`;
+            windowEl.style.top = `${pos.top}px`;
+            const hue = Math.floor(Math.random() * 360);
+            windowEl.style.background = `hsl(${hue}, 70%, 95%)`;
+
+            windowEl.innerHTML = `
+                <div class="window-header">
+                    <div class="window-title">${title}</div>
+                    <div class="window-close">×</div>
+                </div>
+                <div class="window-content">${content}</div>
+            `;
+
+            document.body.appendChild(windowEl);
+            windows.push(windowEl);
+
+            windowEl.querySelector('.window-close').addEventListener('click', function() {
+                windowEl.style.transition = 'all 0.3s ease';
+                windowEl.style.transform = 'scale(0)';
+                windowEl.style.opacity = '0';
+                setTimeout(() => {
+                    if (document.body.contains(windowEl)) {
+                        windowEl.remove();
+                        const index = windows.indexOf(windowEl);
+                        if (index > -1) windows.splice(index, 1);
+                    }
+                }, 300);
+            });
+
+            windowEl.querySelector('.window-header').addEventListener('mousedown', function(e) {
+                currentDraggingWindow = windowEl;
+                offsetX = e.clientX - windowEl.offsetLeft;
+                offsetY = e.clientY - windowEl.offsetTop;
+                e.preventDefault();
+            });
+
+            // 自动消失
+            const disappearTime = Math.random() * 1000 + 1000;
+            setTimeout(() => {
+                if (document.body.contains(windowEl)) {
+                    windowEl.style.transition = 'all 0.5s ease';
+                    windowEl.style.transform = 'scale(0.8)';
+                    windowEl.style.opacity = '0';
+                    setTimeout(() => {
+                        if (document.body.contains(windowEl)) {
+                            windowEl.remove();
+                            const index = windows.indexOf(windowEl);
+                            if (index > -1) windows.splice(index, 1);
+                        }
+                    }, 500);
+                }
+            }, disappearTime);
+        }
+
+        // 拖拽事件
+        document.addEventListener('mousemove', function(e) {
+            if (currentDraggingWindow) {
+                const maxX = window.innerWidth - currentDraggingWindow.offsetWidth;
+                const maxY = window.innerHeight - currentDraggingWindow.offsetHeight;
+                let newLeft = e.clientX - offsetX;
+                let newTop = e.clientY - offsetY;
+                newLeft = Math.max(0, Math.min(newLeft, maxX));
+                newTop = Math.max(0, Math.min(newTop, maxY));
+                currentDraggingWindow.style.left = `${newLeft}px`;
+                currentDraggingWindow.style.top = `${newTop}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', function() {
+            currentDraggingWindow = null;
+        });
+
+        // 快速自动生成弹窗
+        function startFastAutoWindows() {
+            function generateBatch() {
+                const count = Math.floor(Math.random() * 3) + 3;
+                for (let i = 0; i < count; i++) {
+                    setTimeout(() => {
+                        const randomTitle = randomTitles[Math.floor(Math.random() * randomTitles.length)];
+                        const randomContent = randomContents[Math.floor(Math.random() * randomContents.length)];
+                        createWindow(randomTitle, randomContent);
+                    }, i * 100);
+                }
+                const nextDelay = Math.random() * 700 + 800;
+                setTimeout(generateBatch, nextDelay);
+            }
+            generateBatch();
+        }
+    </script>
+</body>
+</html>
+
+
+
